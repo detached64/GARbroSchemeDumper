@@ -1,29 +1,29 @@
-﻿using System;
+﻿using GameRes;
+using GameRes.Formats.KiriKiri;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reflection;
 
 namespace SchemeTool
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             // Load database
             using (Stream stream = File.OpenRead(".\\GameData\\Formats.dat"))
             {
-                GameRes.FormatCatalog.Instance.DeserializeScheme(stream);
+                FormatCatalog.Instance.DeserializeScheme(stream);
             }
 
-            GameRes.Formats.KiriKiri.Xp3Opener format = GameRes.FormatCatalog.Instance.ArcFormats
-                .FirstOrDefault(a => a is GameRes.Formats.KiriKiri.Xp3Opener) as GameRes.Formats.KiriKiri.Xp3Opener;
+            Xp3Opener format = FormatCatalog.Instance.ArcFormats
+                .FirstOrDefault(a => a is Xp3Opener) as Xp3Opener;
 
             if (format != null)
             {
-                GameRes.Formats.KiriKiri.Xp3Scheme scheme = format.Scheme as GameRes.Formats.KiriKiri.Xp3Scheme;
+                Xp3Scheme scheme = format.Scheme as Xp3Scheme;
 
                 // Add scheme information here
 
@@ -43,14 +43,14 @@ namespace SchemeTool
                 };
                 GameRes.Formats.KiriKiri.ICrypt crypt = new GameRes.Formats.KiriKiri.CxEncryption(cs);
 #else
-                GameRes.Formats.KiriKiri.ICrypt crypt = new GameRes.Formats.KiriKiri.XorCrypt(0x00);
+                ICrypt crypt = new XorCrypt(0x00);
 #endif
 
                 scheme.KnownSchemes.Add("game title", crypt);
             }
 
-            var gameMap = typeof(GameRes.FormatCatalog).GetField("m_game_map", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                .GetValue(GameRes.FormatCatalog.Instance) as Dictionary<string, string>;
+            var gameMap = typeof(FormatCatalog).GetField("m_game_map", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(FormatCatalog.Instance) as Dictionary<string, string>;
 
             if (gameMap != null)
             {
@@ -61,8 +61,11 @@ namespace SchemeTool
             // Save database
             using (Stream stream = File.Create(".\\GameData\\Formats.dat"))
             {
-                GameRes.FormatCatalog.Instance.SerializeScheme(stream);
+                FormatCatalog.Instance.SerializeScheme(stream);
             }
+
+            FormatCatalog.Instance.SerializeSchemeJson();
+
         }
     }
 }

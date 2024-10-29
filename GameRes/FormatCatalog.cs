@@ -33,6 +33,7 @@ using GameRes.Collections;
 using System.Runtime.Serialization.Formatters.Binary;
 using GameRes.Compression;
 using System.Threading;
+using Newtonsoft.Json;
 
 namespace GameRes
 {
@@ -40,15 +41,15 @@ namespace GameRes
     {
         private static readonly FormatCatalog m_instance = new FormatCatalog();
 
-        #pragma warning disable 649
-        private IEnumerable<ArchiveFormat>  m_arc_formats;
-        private IEnumerable<ImageFormat>    m_image_formats;
-        private IEnumerable<AudioFormat>    m_audio_formats;
+#pragma warning disable 649
+        private IEnumerable<ArchiveFormat> m_arc_formats;
+        private IEnumerable<ImageFormat> m_image_formats;
+        private IEnumerable<AudioFormat> m_audio_formats;
         [ImportMany(typeof(ScriptFormat))]
-        private IEnumerable<ScriptFormat>   m_script_formats;
+        private IEnumerable<ScriptFormat> m_script_formats;
         [ImportMany(typeof(ISettingsManager))]
         private IEnumerable<ISettingsManager> m_settings_managers;
-        #pragma warning restore 649
+#pragma warning restore 649
 
         private MultiValueDictionary<string, IResource> m_extension_map = new MultiValueDictionary<string, IResource>();
         private MultiValueDictionary<uint, IResource> m_signature_map = new MultiValueDictionary<uint, IResource>();
@@ -56,102 +57,102 @@ namespace GameRes
         private Dictionary<string, string> m_game_map = new Dictionary<string, string>();
 
         /// <summary> The only instance of this class.</summary>
-        public static FormatCatalog       Instance      { get { return m_instance; } }
+        public static FormatCatalog Instance { get { return m_instance; } }
 
-        public IEnumerable<ArchiveFormat> ArcFormats    { get { return m_arc_formats; } }
-        public IEnumerable<ImageFormat>   ImageFormats  { get { return m_image_formats; } }
-        public IEnumerable<AudioFormat>   AudioFormats  { get { return m_audio_formats; } }
-        public IEnumerable<ScriptFormat>  ScriptFormats { get { return m_script_formats; } }
+        public IEnumerable<ArchiveFormat> ArcFormats { get { return m_arc_formats; } }
+        public IEnumerable<ImageFormat> ImageFormats { get { return m_image_formats; } }
+        public IEnumerable<AudioFormat> AudioFormats { get { return m_audio_formats; } }
+        public IEnumerable<ScriptFormat> ScriptFormats { get { return m_script_formats; } }
 
         public IEnumerable<IResource> Formats
         {
             get
             {
-                return ((IEnumerable<IResource>)ArcFormats).Concat (ImageFormats).Concat (AudioFormats).Concat (ScriptFormats);
+                return ((IEnumerable<IResource>)ArcFormats).Concat(ImageFormats).Concat(AudioFormats).Concat(ScriptFormats);
             }
         }
 
         public int CurrentSchemeVersion { get; private set; }
-        public string          SchemeID { get { return "GARbroDB"; } }
-        public string  AssemblyLocation { get; private set; }
-        public string     DataDirectory { get { return m_gamedata_dir.Value; } }
+        public string SchemeID { get { return "GARbroDB"; } }
+        public string AssemblyLocation { get; private set; }
+        public string DataDirectory { get { return m_gamedata_dir.Value; } }
 
         public Exception LastError { get; set; }
 
-        public event ParametersRequestEventHandler  ParametersRequest;
+        public event ParametersRequestEventHandler ParametersRequest;
 
         private Lazy<string> m_gamedata_dir;
 
-        private FormatCatalog ()
+        private FormatCatalog()
         {
-            AssemblyLocation = Path.GetDirectoryName (System.Reflection.Assembly.GetExecutingAssembly().Location);
-            m_gamedata_dir = new Lazy<string> (() => Path.Combine (AssemblyLocation, "GameData"));
+            AssemblyLocation = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            m_gamedata_dir = new Lazy<string>(() => Path.Combine(AssemblyLocation, "GameData"));
 
             //An aggregate catalog that combines multiple catalogs
             var catalog = new AggregateCatalog();
             //Adds all the parts found in the same assembly as the Program class
-            catalog.Catalogs.Add (new AssemblyCatalog (typeof(FormatCatalog).Assembly));
+            catalog.Catalogs.Add(new AssemblyCatalog(typeof(FormatCatalog).Assembly));
             //Adds parts matching pattern found in the directory of the assembly
-            catalog.Catalogs.Add (new DirectoryCatalog (AssemblyLocation, "Arc*.dll"));
+            catalog.Catalogs.Add(new DirectoryCatalog(AssemblyLocation, "Arc*.dll"));
 
             //Create the CompositionContainer with the parts in the catalog
-            using (var container = new CompositionContainer (catalog))
+            using (var container = new CompositionContainer(catalog))
             {
-                m_arc_formats = ImportWithPriorities<ArchiveFormat> (container);
-                m_image_formats = ImportWithPriorities<ImageFormat> (container);
-                m_audio_formats = ImportWithPriorities<AudioFormat> (container);
+                m_arc_formats = ImportWithPriorities<ArchiveFormat>(container);
+                m_image_formats = ImportWithPriorities<ImageFormat>(container);
+                m_audio_formats = ImportWithPriorities<AudioFormat>(container);
                 //Fill the imports of this object
-                container.ComposeParts (this);
+                container.ComposeParts(this);
 
-                AddResourceImpl (m_image_formats, container);
-                AddResourceImpl (m_arc_formats, container);
-                AddResourceImpl (m_audio_formats, container);
-                AddResourceImpl (m_script_formats, container);
+                AddResourceImpl(m_image_formats, container);
+                AddResourceImpl(m_arc_formats, container);
+                AddResourceImpl(m_audio_formats, container);
+                AddResourceImpl(m_script_formats, container);
 
-                AddAliases (container);
+                AddAliases(container);
             }
         }
 
-        private void AddResourceImpl (IEnumerable<IResource> formats, ICompositionService container)
+        private void AddResourceImpl(IEnumerable<IResource> formats, ICompositionService container)
         {
             foreach (var impl in formats)
             {
                 try
                 {
-                    var part = AttributedModelServices.CreatePart (impl);
+                    var part = AttributedModelServices.CreatePart(impl);
                     if (part.ImportDefinitions.Any())
-                        container.SatisfyImportsOnce (part);
+                        container.SatisfyImportsOnce(part);
                 }
                 catch (Exception X)
                 {
-                    System.Diagnostics.Trace.WriteLine (X.Message, impl.Tag);
+                    System.Diagnostics.Trace.WriteLine(X.Message, impl.Tag);
                 }
                 foreach (var ext in impl.Extensions)
                 {
-                    m_extension_map.Add (ext.ToUpperInvariant(), impl);
+                    m_extension_map.Add(ext.ToUpperInvariant(), impl);
                 }
                 foreach (var signature in impl.Signatures)
                 {
-                    m_signature_map.Add (signature, impl);
+                    m_signature_map.Add(signature, impl);
                 }
             }
         }
 
-        private IEnumerable<Format> ImportWithPriorities<Format> (ExportProvider provider)
+        private IEnumerable<Format> ImportWithPriorities<Format>(ExportProvider provider)
         {
             return provider.GetExports<Format, IResourceMetadata>()
-                    .OrderByDescending (f => f.Metadata.Priority)
-                    .Select (f => f.Value)
+                    .OrderByDescending(f => f.Metadata.Priority)
+                    .Select(f => f.Value)
                     .ToArray();
         }
 
-        private void AddAliases (ExportProvider provider)
+        private void AddAliases(ExportProvider provider)
         {
             foreach (var alias in provider.GetExports<ResourceAlias, IResourceAliasMetadata>())
             {
                 var metadata = alias.Metadata;
                 IEnumerable<IResource> target_list;
-                if (string.IsNullOrEmpty (metadata.Type))
+                if (string.IsNullOrEmpty(metadata.Type))
                     target_list = Formats;
                 else if ("archive" == metadata.Type)
                     target_list = ArcFormats;
@@ -163,21 +164,21 @@ namespace GameRes
                     target_list = ScriptFormats;
                 else
                 {
-                    System.Diagnostics.Trace.WriteLine ("Unknown resource type specified", metadata.Extension);
+                    System.Diagnostics.Trace.WriteLine("Unknown resource type specified", metadata.Extension);
                     continue;
                 }
-                var ext    = metadata.Extension;
+                var ext = metadata.Extension;
                 var target = metadata.Target;
-                if (!string.IsNullOrEmpty (ext) && !string.IsNullOrEmpty (target))
+                if (!string.IsNullOrEmpty(ext) && !string.IsNullOrEmpty(target))
                 {
-                    var target_res = target_list.FirstOrDefault (f => f.Tag == target);
+                    var target_res = target_list.FirstOrDefault(f => f.Tag == target);
                     if (target_res != null)
-                        m_extension_map.Add (ext.ToUpperInvariant(), target_res);
+                        m_extension_map.Add(ext.ToUpperInvariant(), target_res);
                 }
             }
         }
 
-        public void UpgradeSettings ()
+        public void UpgradeSettings()
         {
             if (Properties.Settings.Default.UpgradeRequired)
             {
@@ -191,7 +192,7 @@ namespace GameRes
             }
         }
 
-        public void SaveSettings ()
+        public void SaveSettings()
         {
             Properties.Settings.Default.Save();
             foreach (var mgr in m_settings_managers)
@@ -204,40 +205,40 @@ namespace GameRes
         /// Look up filename in format registry by filename extension and return corresponding interfaces.
         /// if no formats available, return empty range.
         /// </summary>
-        public IEnumerable<IResource> LookupFileName (string filename)
+        public IEnumerable<IResource> LookupFileName(string filename)
         {
-            string ext = Path.GetExtension (filename);
-            if (string.IsNullOrEmpty (ext))
+            string ext = Path.GetExtension(filename);
+            if (string.IsNullOrEmpty(ext))
                 return Enumerable.Empty<IResource>();
-            return LookupExtension (ext.TrimStart ('.'));
+            return LookupExtension(ext.TrimStart('.'));
         }
 
-        public IEnumerable<IResource> LookupExtension (string ext)
+        public IEnumerable<IResource> LookupExtension(string ext)
         {
-            return m_extension_map.GetValues (ext.ToUpperInvariant(), true);
+            return m_extension_map.GetValues(ext.ToUpperInvariant(), true);
         }
 
-        public IEnumerable<Type> LookupExtension<Type> (string ext) where Type : IResource
+        public IEnumerable<Type> LookupExtension<Type>(string ext) where Type : IResource
         {
-            return LookupExtension (ext).OfType<Type>();
+            return LookupExtension(ext).OfType<Type>();
         }
 
-        public IEnumerable<IResource> LookupSignature (uint signature)
+        public IEnumerable<IResource> LookupSignature(uint signature)
         {
-            return m_signature_map.GetValues (signature, true);
+            return m_signature_map.GetValues(signature, true);
         }
 
-        public IEnumerable<Type> LookupSignature<Type> (uint signature) where Type : IResource
+        public IEnumerable<Type> LookupSignature<Type>(uint signature) where Type : IResource
         {
-            return LookupSignature (signature).OfType<Type>();
+            return LookupSignature(signature).OfType<Type>();
         }
 
         /// <summary>
         /// Enumerate resources matching specified <paramref name="signature"/> and filename extension.
         /// </summary>
-        internal IEnumerable<ResourceType> FindFormats<ResourceType> (string filename, uint signature) where ResourceType : IResource
+        internal IEnumerable<ResourceType> FindFormats<ResourceType>(string filename, uint signature) where ResourceType : IResource
         {
-            var ext = new Lazy<string> (() => Path.GetExtension (filename).TrimStart ('.').ToLowerInvariant(), false);
+            var ext = new Lazy<string>(() => Path.GetExtension(filename).TrimStart('.').ToLowerInvariant(), false);
             var tried = Enumerable.Empty<ResourceType>();
             IEnumerable<string> preferred = null;
             if (VFS.IsVirtual)
@@ -246,16 +247,16 @@ namespace GameRes
                 if (arc_fs != null)
                     preferred = arc_fs.Source.ContainedFormats;
             }
-            for (;;)
+            for (; ; )
             {
-                var range = LookupSignature<ResourceType> (signature);
+                var range = LookupSignature<ResourceType>(signature);
                 if (tried.Any())
-                    range = range.Except (tried);
+                    range = range.Except(tried);
                 // check formats that match filename extension first
-                if (range.Skip (1).Any()) // if range.Count() > 1
-                    range = range.OrderByDescending (f => f.Extensions.Any (e => e == ext.Value));
+                if (range.Skip(1).Any()) // if range.Count() > 1
+                    range = range.OrderByDescending(f => f.Extensions.Any(e => e == ext.Value));
                 if (preferred != null && preferred.Any())
-                    range = range.OrderByDescending (f => preferred.Contains (f.Tag));
+                    range = range.OrderByDescending(f => preferred.Contains(f.Tag));
                 foreach (var impl in range)
                 {
                     yield return impl;
@@ -272,34 +273,35 @@ namespace GameRes
         /// </summary>
         /// <exception cref="System.ArgumentException">May be thrown if filename contains invalid
         /// characters.</exception>
-        public EntryType Create<EntryType> (string filename) where EntryType : Entry, new()
+        public EntryType Create<EntryType>(string filename) where EntryType : Entry, new()
         {
-            return new EntryType {
+            return new EntryType
+            {
                 Name = filename,
-                Type = GetTypeFromName (filename),
+                Type = GetTypeFromName(filename),
             };
         }
 
-        public string GetTypeFromName (string filename, IEnumerable<string> preferred_formats = null)
+        public string GetTypeFromName(string filename, IEnumerable<string> preferred_formats = null)
         {
-            var formats = LookupFileName (filename);
+            var formats = LookupFileName(filename);
             if (!formats.Any())
                 return "";
             if (preferred_formats != null && preferred_formats.Any())
-                formats = formats.OrderByDescending (f => preferred_formats.Contains (f.Tag));
+                formats = formats.OrderByDescending(f => preferred_formats.Contains(f.Tag));
             return formats.First().Type;
         }
 
-        public void InvokeParametersRequest (object source, ParametersRequestEventArgs args)
+        public void InvokeParametersRequest(object source, ParametersRequestEventArgs args)
         {
             if (null != ParametersRequest)
-                ParametersRequest (source, args);
+                ParametersRequest(source, args);
         }
 
         /// <summary>
         /// Read first 4 bytes from stream and return them as 32-bit signature.
         /// </summary>
-        public static uint ReadSignature (Stream file)
+        public static uint ReadSignature(Stream file)
         {
             file.Position = 0;
             uint signature = (byte)file.ReadByte();
@@ -314,34 +316,34 @@ namespace GameRes
         /// <paramref name="pattern"/> in the same directory as archive.
         /// </summary>
         /// <returns>Game title, or null if no match was found.</returns>
-        public string LookupGame (string arc_name, string pattern = "*.exe")
+        public string LookupGame(string arc_name, string pattern = "*.exe")
         {
             string title;
-            if (m_game_map.TryGetValue (Path.GetFileName (arc_name), out title))
+            if (m_game_map.TryGetValue(Path.GetFileName(arc_name), out title))
                 return title;
-            pattern = VFS.CombinePath (VFS.GetDirectoryName (arc_name), pattern);
-            foreach (var file in VFS.GetFiles (pattern).Select (e => Path.GetFileName (e.Name)))
+            pattern = VFS.CombinePath(VFS.GetDirectoryName(arc_name), pattern);
+            foreach (var file in VFS.GetFiles(pattern).Select(e => Path.GetFileName(e.Name)))
             {
-                if (m_game_map.TryGetValue (file, out title))
+                if (m_game_map.TryGetValue(file, out title))
                     return title;
             }
             return null;
         }
 
-        public void DeserializeScheme (Stream input)
+        public void DeserializeScheme(Stream input)
         {
-            int version = GetSerializedSchemeVersion (input);
+            int version = GetSerializedSchemeVersion(input);
             if (version <= CurrentSchemeVersion)
                 return;
-            using (var zs = new ZLibStream (input, CompressionMode.Decompress, true))
+            using (var zs = new ZLibStream(input, CompressionMode.Decompress, true))
             {
                 var bin = new BinaryFormatter();
-                var db = (SchemeDataBase)bin.Deserialize (zs);
+                var db = (SchemeDataBase)bin.Deserialize(zs);
 
                 foreach (var format in Formats)
                 {
                     ResourceScheme scheme;
-                    if (db.SchemeMap.TryGetValue (format.Tag, out scheme))
+                    if (db.SchemeMap.TryGetValue(format.Tag, out scheme))
                         format.Scheme = scheme;
                 }
                 CurrentSchemeVersion = db.Version;
@@ -350,9 +352,10 @@ namespace GameRes
             }
         }
 
-        public void SerializeScheme (Stream output)
+        public void SerializeScheme(Stream output)
         {
-            var db = new SchemeDataBase {
+            var db = new SchemeDataBase
+            {
                 Version = CurrentSchemeVersion,
                 SchemeMap = new Dictionary<string, ResourceScheme>(),
                 GameMap = m_game_map,
@@ -363,28 +366,50 @@ namespace GameRes
                 if (null != scheme)
                     db.SchemeMap[format.Tag] = scheme;
             }
-            SerializeScheme (output, db);
+            SerializeScheme(output, db);
         }
 
-        public void SerializeScheme (Stream output, SchemeDataBase db)
+        public void SerializeScheme(Stream output, SchemeDataBase db)
         {
-            using (var writer = new BinaryWriter (output, System.Text.Encoding.UTF8, true))
+            using (var writer = new BinaryWriter(output, System.Text.Encoding.UTF8, true))
             {
-                writer.Write (SchemeID.ToCharArray());
-                writer.Write (db.Version);
+                writer.Write(SchemeID.ToCharArray());
+                writer.Write(db.Version);
             }
             var bin = new BinaryFormatter();
-            using (var zs = new ZLibStream (output, CompressionMode.Compress, true))
-                bin.Serialize (zs, db);
+            using (var zs = new ZLibStream(output, CompressionMode.Compress, true))
+                bin.Serialize(zs, db);
         }
 
-        public int GetSerializedSchemeVersion (Stream input)
+        public void SerializeSchemeJson()
         {
-            using (var reader = new BinaryReader (input, System.Text.Encoding.UTF8, true))
+            var db = new SchemeDataBase
             {
-                var header = reader.ReadChars (SchemeID.Length);
-                if (!header.SequenceEqual (SchemeID))
-                    throw new FormatException ("Invalid serialization file");
+                Version = CurrentSchemeVersion,
+                SchemeMap = new Dictionary<string, ResourceScheme>(),
+                GameMap = m_game_map,
+            };
+            foreach (var format in Formats)
+            {
+                var scheme = format.Scheme;
+                if (null != scheme)
+                {
+                    db.SchemeMap[format.Tag] = scheme;
+                }
+            }
+
+            var jsonString = JsonConvert.SerializeObject(db, Formatting.Indented);
+            File.WriteAllText(".\\GameData\\Formats.json", jsonString);
+        }
+
+
+        public int GetSerializedSchemeVersion(Stream input)
+        {
+            using (var reader = new BinaryReader(input, System.Text.Encoding.UTF8, true))
+            {
+                var header = reader.ReadChars(SchemeID.Length);
+                if (!header.SequenceEqual(SchemeID))
+                    throw new FormatException("Invalid serialization file");
                 return reader.ReadInt32();
             }
         }
@@ -392,19 +417,19 @@ namespace GameRes
         /// <summary>
         /// Read text file <paramref name="filename"/> from data directory, performing <paramref name="process_line"/> action on each non-empty line.
         /// </summary>
-        public void ReadFileList (string filename, Action<string> process_line)
+        public void ReadFileList(string filename, Action<string> process_line)
         {
-            var lst_file = Path.Combine (DataDirectory, filename);
-            if (!File.Exists (lst_file))
+            var lst_file = Path.Combine(DataDirectory, filename);
+            if (!File.Exists(lst_file))
                 return;
-            using (var input = new StreamReader (lst_file))
+            using (var input = new StreamReader(lst_file))
             {
                 string line;
                 while ((line = input.ReadLine()) != null)
                 {
                     if (line.Length > 0)
                     {
-                        process_line (line);
+                        process_line(line);
                     }
                 }
             }
@@ -416,25 +441,25 @@ namespace GameRes
     /// </summary>
     public class ResourceInstance<T> where T : IResource
     {
-        T           m_format;
-        Func<T>     m_resolver;
+        T m_format;
+        Func<T> m_resolver;
 
-        public ResourceInstance (string tag)
+        public ResourceInstance(string tag)
         {
             var t = typeof(T);
-            if (typeof(ImageFormat) == t || t.IsSubclassOf (typeof(ImageFormat)))
-                m_resolver = () => ImageFormat.FindByTag (tag) as T;
-            else if (typeof(ArchiveFormat) == t || t.IsSubclassOf (typeof(ArchiveFormat)))
-                m_resolver = () => FormatCatalog.Instance.ArcFormats.FirstOrDefault (f => f.Tag == tag) as T;
-            else if (typeof(AudioFormat) == t || t.IsSubclassOf (typeof(AudioFormat)))
-                m_resolver = () => FormatCatalog.Instance.AudioFormats.FirstOrDefault (f => f.Tag == tag) as T;
-            else if (typeof(ScriptFormat) == t || t. IsSubclassOf (typeof(ScriptFormat)))
-                m_resolver = () => FormatCatalog.Instance.ScriptFormats.FirstOrDefault (f => f.Tag == tag) as T;
+            if (typeof(ImageFormat) == t || t.IsSubclassOf(typeof(ImageFormat)))
+                m_resolver = () => ImageFormat.FindByTag(tag) as T;
+            else if (typeof(ArchiveFormat) == t || t.IsSubclassOf(typeof(ArchiveFormat)))
+                m_resolver = () => FormatCatalog.Instance.ArcFormats.FirstOrDefault(f => f.Tag == tag) as T;
+            else if (typeof(AudioFormat) == t || t.IsSubclassOf(typeof(AudioFormat)))
+                m_resolver = () => FormatCatalog.Instance.AudioFormats.FirstOrDefault(f => f.Tag == tag) as T;
+            else if (typeof(ScriptFormat) == t || t.IsSubclassOf(typeof(ScriptFormat)))
+                m_resolver = () => FormatCatalog.Instance.ScriptFormats.FirstOrDefault(f => f.Tag == tag) as T;
             else
-                throw new ApplicationException ("Invalid resource type specified for ResourceInstance<T>");
+                throw new ApplicationException("Invalid resource type specified for ResourceInstance<T>");
         }
 
-        public T Value { get { return LazyInitializer.EnsureInitialized (ref m_format, m_resolver); } }
+        public T Value { get { return LazyInitializer.EnsureInitialized(ref m_format, m_resolver); } }
     }
 
     [Serializable]
@@ -442,7 +467,7 @@ namespace GameRes
     {
         public int Version;
 
-        public Dictionary<string, ResourceScheme>   SchemeMap;
-        public Dictionary<string, string>           GameMap;
+        public Dictionary<string, ResourceScheme> SchemeMap;
+        public Dictionary<string, string> GameMap;
     }
 }
