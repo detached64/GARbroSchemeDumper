@@ -22,7 +22,8 @@ namespace SchemeDumper
                 Console.WriteLine(ex.ToString());
                 throw;
             }
-            Console.WriteLine("Deserialize success.");
+            Console.WriteLine("Deserialization success.Press enter to exit...");
+            Console.ReadLine();
         }
     }
 }
