@@ -1,3 +1,4 @@
+<!--
 GARbro
 ======
 
@@ -72,3 +73,22 @@ Contributors
 <a href="https://github.com/crskycode/GARbro/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=crskycode/GARbro" />
 </a>
+-->
+GARbro Scheme Dumper
+======
+
+Dump GARbro's Formats.dat into json.
+
+How to use
+------
+
+Way 1: Clone the code and build the solution. Then open the build folder and double click SchemeDumper.exe.
+
+Way 2: Download release and Extract. Then open the folder and double click SchemeDumper.exe. You can also update the Formats.dat in GameData folder manually, then double click SchemeDumper.exe.
+
+The result is in GameData folder, named Formats.json.
+
+Why not standalone
+------
+
+The Formats.dat is serialized by BinaryFormatter. As a result, we cannot get schemes if we haven't got the structure of the object/class. And it's much more inconvenient and challenging to find out and rewrite the class.
