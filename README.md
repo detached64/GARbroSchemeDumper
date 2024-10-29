@@ -91,4 +91,9 @@ The result is in GameData folder, named Formats.json.
 Why not standalone
 ------
 
-The Formats.dat is serialized by BinaryFormatter. As a result, we cannot get schemes if we haven't got the structure of the object/class. And it's much more inconvenient and challenging to find out and rewrite the class.
+The Formats.dat is serialized by BinaryFormatter. As a result, we cannot get schemes if we haven't got the structure of the object/class. And it's much more inconvenient and challenging to find out and rewrite all these classes.
+
+License
+------
+
+MIT License
