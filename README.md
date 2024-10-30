@@ -79,7 +79,7 @@ GARbro Scheme Dumper
 
 Dump GARbro's Formats.dat into json.
 
-How to use
+Usage
 ------
 
 Way 1: Clone the code and build the solution. Then open the build folder and double click `SchemeDumper.exe`.
@@ -88,10 +88,19 @@ Way 2: Download release and Extract. Then open the folder and double click Schem
 
 The result is in GameData folder, named `Formats.json`.
 
+Way 3: Download `Formats.json` from release.
+
+Why json
+------
+
+When serialized into json, the properties of each scheme will be preserved. Besides, we can just deserialize a part of json with corresponding class(even without) instead of the full file via Json.NET.
+
+And most importantly, readability...
+
 Why not standalone
 ------
 
-The `Formats.dat` is serialized by BinaryFormatter(and then zlib-compressed). As a result, we cannot get schemes if we haven't got the structure of the object/class. And it's much more inconvenient and challenging to find out and rewrite all these classes.
+The `Formats.dat` is serialized by BinaryFormatter(and then zlib-compressed). As a result, we cannot get schemes if we haven't got the full structure of the object/class. And it's much more inconvenient and challenging to find out and rewrite all these classes.
 
 License
 ------
